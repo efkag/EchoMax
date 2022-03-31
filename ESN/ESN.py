@@ -1,4 +1,5 @@
 from turtle import forward
+from pygame import init
 import torch
 import torch.nn as tnn
 from scipy import sparse
@@ -17,6 +18,7 @@ class ESN():
         # Readout if selected 
         if readout_units:
             self.Wout = None
+        self.input_scaling = .2
 
     
     def initalise_weights(self):
@@ -31,13 +33,25 @@ class ESN():
         # Adjust spectral radius
         W /= e_max / self.spectral_radius
         return torch.from_numpy(W)
+    
+    def init_input_weights(self, X):
+        # N -> Obesrations, T-> timesteps, V-> variables
+        N, T, V = X.shape
+        if not self.Win:
+            #TODO: there may be a better way to do this
+            Win = (2.0*np.random.binomial(1, 0.5 , [self.res_units, V]) - 1.0)*self._input_scaling
+            self.Win = torch.from_numpy(Win)
+        pass
 
-
-    def forward():
+    def forward(sefl, X):
         pass
     
-    def fit():
+    def fit(self):
         pass
 
-    def get_states():
+    def get_states(self, X):
+        if not self.Win:
+            self.Win = self.init_input_weights(X)
+        
+        
         pass
