@@ -6,19 +6,30 @@ from scipy import sparse
 import numpy as np
 
 class ESN():
-    def __init__(self, res_units=100, connect_ratio=.2, spectral_radius=.99, readout_units=None) -> None:
+    def __init__(self, res_units=100, out_units=1, connect_ratio=.2, spectral_radius=.99, readout_units=None, **kwargs) -> None:
         self.res_units = res_units
-        self.connect_ratio = .2
+        self.out_units = out_units
+        self.connect_ratio = connect_ratio
         self.spectral_radius = spectral_radius
         self.readout_units = readout_units
+        # input scalling factor
+        self.gamma = kwargs.get('gamma', 0.01)
+        self.act_func = kwargs.get('act_func', torch.sigmoid)
+        self.distr = kwargs.get('Wout_distr', 'uniform')
+        # sigma of the output weights distribution if Gaussian 
+        # or the absolute limit point for Uniform
+        self.sigma = kwargs.get('sigma', 1.0)
+
         # Input weights depend on input size, they are set when data is provided
         self.Win = None
         # Reservoir weights
-        self.W = self.initalise_weights() 
+        self.W = self.initalise_weights()
+        self.W.requires_grad = False
         # Readout if selected 
         if readout_units:
-            self.Wout = None
-        self.input_scaling = .2
+            self.Wout = self.init_output_weights
+        
+        self.Wout = torch.nn.Parameter(self.Wout, requires_grad = True)
 
     
     def initalise_weights(self):
@@ -39,9 +50,15 @@ class ESN():
         N, T, V = X.shape
         if not self.Win:
             #TODO: there may be a better way to do this
-            Win = (2.0*np.random.binomial(1, 0.5 , [self.res_units, V]) - 1.0)*self._input_scaling
+            Win = self.gamma * np.random.randn(V, self.res_units)
             self.Win = torch.from_numpy(Win)
-        pass
+            self.Win.requires_grad = False
+    
+    def init_output_weights(self):
+        if self.distr == 'uniform':
+            wout = np.random.uniform(-self.sigma, self.sigma, (self.res_units, self.out_units)) / self.res_units
+        elif self.distr == 'normal' or  self.distr == 'gaussian':
+            wout = np.random.normal(0, self.sigma, (self.res_units, self.out_units)) / self.res_units
 
     def forward(sefl, X):
         pass
@@ -53,5 +70,5 @@ class ESN():
         if not self.Win:
             self.Win = self.init_input_weights(X)
         
-        
+
         pass
