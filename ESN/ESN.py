@@ -79,7 +79,6 @@ class ESN():
             batch_loss = self.loss(out, y)
             batch_loss.backward()
             self.optimiser.step()
-        pass
 
     def get_states(self, X):
         #X shape of 
