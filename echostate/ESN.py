@@ -29,9 +29,9 @@ class ESN:
         self.W.requires_grad = False
         # Readout if selected 
         if readout_units:
-            self.Wout = self.init_output_weights
+            self.Wout = self.init_output_weights()
             self.Wout = torch.nn.Parameter(self.Wout, requires_grad = True)
-            self.optimiser = kwargs.get('optimiser', torch.optim.Adam)(self.Wout, lr=self.lr)
+            self.optimiser = kwargs.get('optimiser', torch.optim.Adam)([self.Wout], lr=self.lr)
             self.loss = kwargs.get('loss', torch.nn.MSELoss())
     
     def initalise_weights(self):
