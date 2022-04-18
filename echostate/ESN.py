@@ -89,8 +89,11 @@ class ESN:
         # dim0-> timesteps
         # dim1-> variables
         if not self.Win:
-            self.Win = self.init_input_weights(X)
+            no_of_dims = len(X.size())
+            if no_of_dims < 3:
+                X = torch.unsqueeze(X, 0)
+            self.init_input_weights(X)
         
-        h = torch.mm(X, self.Win)
-        echoes = self.act_func(torch.mm(h, self.W))
+        h = torch.matmul(X, self.Win)
+        echoes = self.act_func(torch.matmul(h, self.W))
         return echoes
