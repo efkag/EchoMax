@@ -7,3 +7,6 @@ print(signal.dtype)
 
 states =  esn.get_states(signal)
 print(states.size())
+
+out =  esn.forward(signal)
+print(out.size())

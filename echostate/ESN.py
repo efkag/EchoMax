@@ -54,21 +54,21 @@ class ESN:
         # dim2-> variables
         # N -> Obesrations, T-> timesteps, V-> variables
         N, T, V = X.shape
-        if not self.Win:
-            #TODO: there may be a better way to do this
-            Win = self.gamma * np.random.randn(V, self.res_units)
-            self.Win = torch.from_numpy(Win)
-            self.Win.requires_grad = False
+        #TODO: there may be a better way to do this
+        Win = self.gamma * np.random.randn(V, self.res_units)
+        self.Win = torch.from_numpy(Win)
+        self.Win.requires_grad = False
     
     def init_output_weights(self):
         if self.distr == 'uniform':
             wout = np.random.uniform(-self.sigma, self.sigma, (self.res_units, self.out_units)) / self.res_units
         elif self.distr == 'normal' or  self.distr == 'gaussian':
             wout = np.random.normal(0, self.sigma, (self.res_units, self.out_units)) / self.res_units
+        return torch.from_numpy(wout)
 
-    def forward(self, X, Y):
-        echoes = self.get_states()
-        out = torch.mm(echoes, self.Wout)
+    def forward(self, X):
+        echoes = self.get_states(X)
+        out = torch.matmul(echoes, self.Wout)
         return out
     
     def fit(self, X, Y):
@@ -88,7 +88,7 @@ class ESN:
         #X shape of 
         # dim0-> timesteps
         # dim1-> variables
-        if not self.Win:
+        if self.Win is None:
             no_of_dims = len(X.size())
             if no_of_dims < 3:
                 X = torch.unsqueeze(X, 0)
