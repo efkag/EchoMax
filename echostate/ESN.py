@@ -1,12 +1,10 @@
-from re import L
-from turtle import forward
-from pygame import init
+from calendar import EPOCH
 import torch
 import torch.nn as tnn
 from scipy import sparse
 import numpy as np
 
-class ESN():
+class ESN:
     def __init__(self, res_units=100, out_units=1, connect_ratio=.2, spectral_radius=.99, readout_units=None, **kwargs) -> None:
         self.res_units = res_units
         self.out_units = out_units
@@ -21,6 +19,7 @@ class ESN():
         # or the absolute limit point for Uniform
         self.sigma = kwargs.get('sigma', 1.0)
         self.lr = kwargs.get('lr', 0.001)
+        self.epochs =  kwargs.get('epochs', 50)
         
 
         # Input weights depend on input size, they are set when data is provided
@@ -30,9 +29,9 @@ class ESN():
         self.W.requires_grad = False
         # Readout if selected 
         if readout_units:
-            self.Wout = self.init_output_weights
+            self.Wout = self.init_output_weights()
             self.Wout = torch.nn.Parameter(self.Wout, requires_grad = True)
-            self.optimiser = kwargs.get('optimiser', torch.optim.Adam)(self.Wout, lr=self.lr)
+            self.optimiser = kwargs.get('optimiser', torch.optim.Adam)([self.Wout], lr=self.lr)
             self.loss = kwargs.get('loss', torch.nn.MSELoss())
     
     def initalise_weights(self):
@@ -55,24 +54,29 @@ class ESN():
         # dim2-> variables
         # N -> Obesrations, T-> timesteps, V-> variables
         N, T, V = X.shape
-        if not self.Win:
-            #TODO: there may be a better way to do this
-            Win = self.gamma * np.random.randn(V, self.res_units)
-            self.Win = torch.from_numpy(Win)
-            self.Win.requires_grad = False
+        #TODO: there may be a better way to do this
+        Win = self.gamma * np.random.randn(V, self.res_units)
+        self.Win = torch.from_numpy(Win)
+        self.Win.requires_grad = False
     
     def init_output_weights(self):
         if self.distr == 'uniform':
             wout = np.random.uniform(-self.sigma, self.sigma, (self.res_units, self.out_units)) / self.res_units
         elif self.distr == 'normal' or  self.distr == 'gaussian':
             wout = np.random.normal(0, self.sigma, (self.res_units, self.out_units)) / self.res_units
+        return torch.from_numpy(wout)
 
-    def forward(self, X, Y):
-        echoes = self.get_states()
-        out = torch.mm(echoes, self.Wout)
+    def forward(self, X):
+        echoes = self.get_states(X)
+        out = torch.matmul(echoes, self.Wout)
         return out
     
     def fit(self, X, Y):
+        for e in range(self.epochs):
+            for batch_x, batch_y in zip(X, Y):
+                self.partial_fit(batch_x, batch_y)
+
+    def partial_fit(self, X, Y):
         for x, y in zip(X, Y):
             self.optimiser.zero_grad()
             out = self.forward(x)
@@ -84,9 +88,12 @@ class ESN():
         #X shape of 
         # dim0-> timesteps
         # dim1-> variables
-        if not self.Win:
-            self.Win = self.init_input_weights(X)
+        if self.Win is None:
+            no_of_dims = len(X.size())
+            if no_of_dims < 3:
+                X = torch.unsqueeze(X, 0)
+            self.init_input_weights(X)
         
-        h = torch.mm(X, self.Win)
-        echoes = self.act_func(torch.mm(h, self.W))
+        h = torch.matmul(X, self.Win)
+        echoes = self.act_func(torch.matmul(h, self.W))
         return echoes
